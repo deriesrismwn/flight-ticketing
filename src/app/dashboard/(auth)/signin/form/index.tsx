@@ -3,6 +3,8 @@ import { ActionResult, handleSignIn } from "./action";
 import { useActionState } from "react";
 import { FC } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useFormStatus } from "react-dom";
 
 interface FormSignInProps {}
 
@@ -11,7 +13,17 @@ const initialFormState: ActionResult = {
   errorDesc: [],
 };
 
-const FormSignIn: FC<FormSignInProps> = () => {
+const SubmitButton = () => {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button disabled={pending} className="w-full" type="submit">
+      {pending ? "Loading..." : "Submit"}
+    </Button>
+  );
+};
+
+const FormSignIn: FC<FormSignInProps> = ({}) => {
   const [state, formAction] = useActionState(handleSignIn, initialFormState);
 
   console.log(state); // Output: { errorTitle: null, errorDesc: [] }
@@ -24,17 +36,26 @@ const FormSignIn: FC<FormSignInProps> = () => {
             Sign in to your account
           </h2>
 
+          {state.errorTitle != null && (
+            <div className="mx-auto my-7 bg-red-500 w-[400px] p-4 rounded-lg text-white">
+              <div className="font-bold mb-4">{state.errorTitle}</div>
+              <ul className="list-disc list-inside">
+                {state.errorDesc?.map((value, index) => (
+                  <li key={index}>{value}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
             <form action={formAction} className="space-y-6">
-              <input type="email" placeholder="Email..." name="email" />
-              <input
+              <Input type="email" placeholder="Email..." name="email" />
+              <Input
                 type="password"
                 placeholder="Password..."
                 name="password"
               />
-              <Button className="w-full" type="submit">
-                Submit
-              </Button>
+              <SubmitButton />
             </form>
           </div>
         </div>

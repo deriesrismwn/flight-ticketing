@@ -1,7 +1,7 @@
 import { PrismaAdapter } from "@lucia-auth/adapter-prisma"; // 1.3k (gzipped: 571)
 import prisma from "../../lib/prisma";
 
-import { Lucia } from "lucia"; // 7.8k (gzipped: 2.5k)
+import { Lucia, Session, User } from "lucia"; // 7.8k (gzipped: 2.5k)
 import { RoleUser } from "@prisma/client"; // 40.8k (gzipped: 15.2k)
 
 import { cache } from "react"; // 4.1k (gzipped: 1.8k)
@@ -26,33 +26,34 @@ export const lucia = new Lucia(adapter, {
     },
 });
 
-export const getUser = cache(async () => {
+export const getUser = cache(async (): Promise<{ user: User, session: Session } | { user: null, session: null }> => {
     const cookieStore = await cookies(); // Tunggu sampai Promise selesai
     const sessionId = cookieStore.get(lucia.sessionCookieName)?.value ?? null;
 
-    if (!sessionId) return null; // Perbaikan pada logika kondisi
-
+    if (!sessionId) {
+        return {
+            user: null,
+            session: null
+        };
+    }
+    const result = await lucia.validateSession(sessionId);
     try {
-        const { user, session } = await lucia.validateSession(sessionId);
 
-        if (session && session.fresh) {
-            const sessionCookie = lucia.createSessionCookie(session.id);
+        if (result.session && result.session?.fresh) {
+            const sessionCookie = lucia.createSessionCookie(result.session.id);
             cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
         }
 
-        if (session) {
-            const sessionCookie = lucia.createSessionCookie(session.id);
+        if (!result.session) {
+            const sessionCookie = lucia.createBlankSessionCookie();
             cookieStore.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-            lucia.createBlankSessionCookie();
         }
 
-        return user; // Perbaikan: pastikan user dikembalikan di sini
     } catch (error) {
-        // Tambahkan log error untuk debugging
         console.error('Error validating session:', error);
     }
 
-    return null; // Default jika validasi gagal
+    return result;
 });
 
 declare module 'lucia' {

@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation"; // 13.2k (gzipped: 3.1k)
+import { redirect } from "next/navigation"; 
 import { formSchema } from "./validation";
-import prisma from "../../../../../lib/prisma";
 import { cookies } from "next/headers";
 import { lucia } from "@/lib/auth";
 import bcrypt from 'bcrypt'
+import prisma from "../../../../../../lib/prisma";
 
 export interface ActionResult {
     errorTitle: string | null;
@@ -16,7 +16,9 @@ export async function handleSignIn(
     prevState: any,
     formData: FormData
 ): Promise<ActionResult> {
-    console.log(formData.get("email")); // 2 (empty string)  (empty string)
+    // console.log(formData.get("email")); 
+    // console.log(formData.get("password")); 
+
 
     const values = formSchema.safeParse({
         email: formData.get("email"),
@@ -37,6 +39,7 @@ export async function handleSignIn(
         }
     })
 
+
     if (!existingUser) {
         return {
             errorTitle: 'Error',
@@ -44,7 +47,7 @@ export async function handleSignIn(
         }
     }
 
-    const validPassword = bcrypt.compare(values.data.password, existingUser.password)
+    const validPassword = await bcrypt.compare(values.data.password, existingUser.password)
 
     if (!validPassword) {
         return {
@@ -53,14 +56,16 @@ export async function handleSignIn(
         }
     }
 
-    // const session = await lucia.createSession(existingUser.id, {})
-    // const sessionCookie = await lucia.createSessionCookie(session.id)
+    const session = await lucia.createSession(existingUser.id, {})
+    const sessionCookie = await lucia.createSessionCookie(session.id)
 
-    // cookies().set(
-    //     sessionCookie.name,
-    //     sessionCookie.value,
-    //     sessionCookie.attributes
-    // )
+    const cookieStore = await cookies();  
+
+    cookieStore.set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes
+    );
 
     return redirect("/dashboard");
 }
